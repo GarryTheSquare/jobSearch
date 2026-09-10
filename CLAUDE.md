@@ -13,7 +13,9 @@ Two halves of one system, in sibling folders:
   working control panel, not documentation).
 
 `scraper/README.md` is long and accurate; read it before changing behaviour that
-it describes. `.claude/skills/apply/` and `.claude/agents/cv-writer.md` are part
+it describes. The root `README.md` is the one written for other people — the
+dependency table there and `install-windows.bat` (a Windows dependency installer
+driven by yes/no questions) have to keep saying the same thing as each other. `.claude/skills/apply/` and `.claude/agents/cv-writer.md` are part
 of the product, not tooling — they are versioned here so the application-writing
 workflow travels with the scraper.
 

@@ -26,25 +26,67 @@ remote ones.
 
 ## What you need
 
-| | | |
-|---|---|---|
-| **Node.js 20+** | required | ESM, `node:` built-ins, native `fetch`. Developed on 22. |
-| **npm** | required | Ships with Node. |
-| **Playwright + Chromium** | for Indeed only | `npm install` downloads it (a few hundred MB) via the `postinstall` hook. Every other board is plain HTTP — skip Indeed and you never launch a browser. |
-| **Obsidian** | strongly recommended | The vault is plain Markdown and readable in anything, but the control panel, the dashboard and the indexes are built for it. |
-| **Three Obsidian community plugins** | for the control panel | [Buttons](https://github.com/shabegom/buttons), [Shell commands](https://github.com/Taitava/obsidian-shellcommands), [Meta Bind](https://github.com/mProjectsCode/obsidian-meta-bind-plugin). Their settings are committed here; the plugins themselves you install from the community store. |
-| **Claude Code** | optional | Only for `/apply`, the CV and cover-letter writer. Everything else works without it. |
+Windows 11 links below; the same things exist on macOS and Linux.
 
-No API keys, no logins, no paid tiers, nothing to host. Every board here is read
-through a public API, a public feed, or the structured data its own pages embed.
+| | | Get it |
+|---|---|---|
+| **Node.js 20+** | required — runs the scraper | [nodejs.org/en/download](https://nodejs.org/en/download) · direct 64-bit MSI: [nodejs.org/dist/latest-v24.x](https://nodejs.org/dist/latest-v24.x/) (`node-v24.x.x-x64.msi`) · `winget install OpenJS.NodeJS.LTS` |
+| **npm** | required | Comes with Node. Nothing to install. |
+| **Git** | to clone and update this repo | [git-scm.com/downloads/win](https://git-scm.com/downloads/win) · [latest installer](https://github.com/git-for-windows/git/releases/latest) · `winget install Git.Git` |
+| **Playwright + Chromium** | for Indeed only | Not a separate download: `npm install` in `scraper/` pulls it in (a few hundred MB) through the `postinstall` hook. Every other board is plain HTTP — skip Indeed and no browser is ever launched. |
+| **Obsidian** | strongly recommended | [obsidian.md/download](https://obsidian.md/download) · `winget install Obsidian.Obsidian` — free, no account needed. The vault is plain Markdown and readable in anything, but the control panel, the dashboard and the indexes are built for it. |
+| **Buttons** | for the control panel | Obsidian → Settings → Community plugins → Browse, or [github.com/shabegom/buttons](https://github.com/shabegom/buttons/releases/latest) |
+| **Shell commands** | for the control panel | Same browser, or [github.com/Taitava/obsidian-shellcommands](https://github.com/Taitava/obsidian-shellcommands/releases/latest) |
+| **Meta Bind** | for the control panel | Same browser, or [github.com/mProjectsCode/obsidian-meta-bind-plugin](https://github.com/mProjectsCode/obsidian-meta-bind-plugin/releases/latest) |
+| **Claude Code** | optional — only for `/apply` | [code.claude.com/docs/en/setup](https://code.claude.com/docs/en/setup). In CMD: `curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd`; in PowerShell: `irm https://claude.ai/install.ps1 | iex`; or `winget install Anthropic.ClaudeCode`. Needs a paid Claude plan. |
+
+The three plugins' **settings** are committed with the vault — the nine Scraper
+commands and every field in the panel are configured already — but the plugin
+builds are not ours to redistribute, so you install those yourself. Turning
+Restricted mode off in Obsidian and enabling them is the whole setup.
+
+The scraper itself needs no API keys, no logins and no paid tiers, and there is
+nothing to host. Every board is read through a public API, a public feed, or the
+structured data its own pages embed.
+
+### The easy way, on Windows
+
+Double-click **`install-windows.bat`** in the repo root, or run it from a
+terminal. It looks at what you already have, asks about each dependency one at a
+time — Enter takes the suggested answer, and the suggestion is *no* for anything
+already installed — and then installs only what you said yes to:
+
+```
+Checking what you already have...
+
+  Node.js 20+ ........ missing
+  Git ................ found
+  Obsidian ........... missing
+  Claude Code ........ missing
+  winget ............. found
+  Project deps ....... missing
+  config.json ........ missing
+  Obsidian plugins ... missing
+```
+
+It uses `winget` (App Installer, part of Windows 11) for the applications and
+Claude Code's own installer for Claude Code, then offers to do the project side
+too: `npm install`, your `config.json`, the three Obsidian plugins, and the first
+vault build. It is safe to run again — it never overwrites a `config.json` that
+exists, and nothing is installed without a yes.
+
+If `winget` isn't available, install the applications from the links above and
+run the script afterwards for the project steps.
 
 ## Install
 
+By hand, if you'd rather not use the script above:
+
 ```bash
-git clone git@github.com:GarryTheSquare/jobSearch.git
+git clone https://github.com/GarryTheSquare/jobSearch.git
 cd jobSearch/scraper
-npm install                      # also downloads Playwright's Chromium
-cp config.example.json config.json
+npm install                            # also downloads Playwright's Chromium
+copy config.example.json config.json   # cp, on macOS and Linux
 ```
 
 Then scaffold the vault — this writes the `Profile/` templates and the control
@@ -149,6 +191,7 @@ jobSearch/
 ├── scraper/            the CLI — src/sources/ is one small adapter per board
 ├── JobVault/           the vault: Obsidian settings and the panel's commands
 ├── .claude/            the /apply skill and the cv-writer agent
+├── install-windows.bat the dependency installer
 ├── CLAUDE.md           notes for Claude Code working on this repo
 └── README.md
 ```

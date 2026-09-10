@@ -1,0 +1,35 @@
+# ---------------------------------------------------------------------------
+# Everything here is either generated, downloaded, or yours alone.
+# A fresh clone rebuilds all of it: `npm install && npm run vault`.
+# ---------------------------------------------------------------------------
+
+node_modules/
+*.log
+
+# The scraper's own state: the Chromium profile Indeed is scraped with, the
+# durable store plus run bookkeeping, and your settings (see config.example.json)
+scraper/.browser-profile/
+scraper/data/
+scraper/config.json
+
+# The generated half of the vault — rebuilt wholesale from data/jobs.json
+JobVault/Jobs/
+JobVault/Companies/
+JobVault/Indexes/
+JobVault/Dashboard.md
+
+# Your half of the vault — scaffolded on the first build, yours after that
+JobVault/Profile/
+JobVault/Applications/
+
+# Obsidian: keep the vault's settings, not the per-machine layout, and not
+# other people's plugin builds — install those from the community store.
+JobVault/.obsidian/workspace.json
+JobVault/.obsidian/workspace-mobile.json
+JobVault/.obsidian/plugins/*
+!JobVault/.obsidian/plugins/obsidian-shellcommands/
+JobVault/.obsidian/plugins/obsidian-shellcommands/*
+!JobVault/.obsidian/plugins/obsidian-shellcommands/data.json
+!JobVault/.obsidian/plugins/obsidian-meta-bind-plugin/
+JobVault/.obsidian/plugins/obsidian-meta-bind-plugin/*
+!JobVault/.obsidian/plugins/obsidian-meta-bind-plugin/data.json

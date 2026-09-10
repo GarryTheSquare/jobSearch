@@ -1,0 +1,53 @@
+{
+  "sources": [
+    "indeed",
+    "noorderlink",
+    "hoofdkraan",
+    "landingjobs",
+    "himalayas",
+    "remotive",
+    "jobicy",
+    "remoteok",
+    "workingnomads",
+    "weworkremotely",
+    "remoteyeah",
+    "fourdayweek",
+    "dailyremote"
+  ],
+  "sourceOptions": {
+    "noorderlink": {},
+    "striive": {
+      "enabled": false
+    }
+  },
+  "dedupeAcrossSources": true,
+  "regionExclude": null,
+  "keepUnknownRegion": true,
+  "host": "nl.indeed.com",
+  "location": "9711 Groningen",
+  "center": {
+    "lat": 53.2194,
+    "lng": 6.5665
+  },
+  "radius": 25,
+  "queries": [
+    ""
+  ],
+  "sort": "date",
+  "maxAgeDays": null,
+  "jobType": "",
+  "pageSize": 15,
+  "maxPagesPerQuery": 80,
+  "delayMs": [
+    7000,
+    14000
+  ],
+  "recycleEvery": 20,
+  "headless": true,
+  "vaultPath": "../JobVault",
+  "dataFile": "data/jobs.json",
+  "locationInclude": null,
+  "locationExclude": null,
+  "staleAfterDays": 45,
+  "startPage": 0
+}

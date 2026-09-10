@@ -1,0 +1,22 @@
+{
+  "name": "groningen-job-scraper",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Scrapes several job boards for work around Groningen and generates an Obsidian vault you can drive it from",
+  "type": "module",
+  "main": "src/cli.js",
+  "scripts": {
+    "scrape": "node src/cli.js",
+    "vault": "node src/cli.js --vault-only",
+    "panel": "node src/vault-ui.js",
+    "postinstall": "playwright install chromium",
+    "apply": "node src/apply-cli.js"
+  },
+  "dependencies": {
+    "playwright": "^1.55.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,6 @@
+node_modules/
+.browser-profile/
+data/jobs.json
+data/run.pid
+data/run.json
+data/run-crash.log

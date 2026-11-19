@@ -78,7 +78,38 @@ export function readExisting(path) {
     frontmatter.match(new RegExp(`^${name}:\\s*(.+)$`, "m"))?.[1]?.trim().replace(/^"|"$/g, "");
   const idx = raw.indexOf(NOTES_HEADING);
   const notes = idx === -1 ? "" : raw.slice(idx + NOTES_HEADING.length).replace(/^\n+/, "").trimEnd();
-  return { status: field("status"), applied: field("applied"), notes };
+  return { status: field("status"), applied: field("applied"), fit: fitValue(field("fit")), notes };
+}
+
+/* A fit rating, 0–100, as typed in a note or stored in the ratings file. */
+function fitValue(value) {
+  const n = Number(value);
+  return value !== undefined && value !== null && value !== "" && Number.isFinite(n) && n >= 0 && n <= 100
+    ? Math.round(n)
+    : undefined;
+}
+
+/* How well each vacancy suits the candidate, rated against the Profile notes and
+   kept in `Profile/fit.json` as { jobkey: 0–100 }. It lives in Profile/ rather
+   than in the job notes because most vacancies have no note in "marked" mode,
+   and Profile/ is never regenerated. A `fit:` typed into a note wins over it. */
+export const FIT_FILE = "fit.json";
+export function loadFit(vault) {
+  try {
+    const raw = JSON.parse(readFileSync(join(vault, PROFILE_DIR, FIT_FILE), "utf8"));
+    return raw && typeof raw === "object" ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+function fitFor(entry, existing, ratings) {
+  if (existing?.fit !== undefined) return existing.fit;
+  for (const key of [entry.anchor.jobkey, ...entry.members.map((m) => m.jobkey)]) {
+    const n = fitValue(ratings?.[key]);
+    if (n !== undefined) return n;
+  }
+  return undefined;
 }
 
 /* Statuses a note is given by this file. Any other value was typed by hand, so
@@ -163,8 +194,9 @@ export function findExisting(jobsDir, entry) {
 export const NOTE_MODES = ["marked", "all"];
 export const noteMode = (cfg) => (NOTE_MODES.includes(cfg.jobNotes) ? cfg.jobNotes : "marked");
 
-function jobNote(entry, existing) {
+function jobNote(entry, existing, ratings) {
   const job = entry.primary;
+  const fit = fitFor(entry, existing, ratings);
   const members = entry.members;
   const closed = entry.closed;
   const status = existing?.status || (closed ? "closed" : "new");
@@ -214,6 +246,9 @@ function jobNote(entry, existing) {
     `closed: ${closed}`,
     `status: ${status}`,
     `applied: ${existing?.applied || "null"}`,
+    // Left empty when the vacancy has not been rated, like `posted`: the
+    // property stays a number for Bases to sort on.
+    fit === undefined ? "fit:" : `fit: ${fit}`,
     `tags: ${list(tags)}`,
     "---",
     "",
@@ -501,11 +536,12 @@ export function writeJobMark(cfg, entry, change = {}) {
   const jobsDir = join(cfg.vaultPath, "Jobs");
   mkdirSync(jobsDir, { recursive: true });
   const { existing, from } = findExisting(jobsDir, entry);
-  const base = existing || { status: undefined, applied: undefined, notes: "" };
+  const base = existing || { status: undefined, applied: undefined, fit: undefined, notes: "" };
   if (base.applied === "null") base.applied = undefined;
   const next = {
     status: change.status ?? base.status,
     applied: change.applied !== undefined ? change.applied || undefined : base.applied,
+    fit: base.fit,
     notes: change.notes !== undefined ? String(change.notes).trimEnd() : base.notes,
   };
   if (next.status === "applied" && (!next.applied || next.applied === "null")) next.applied = today();
@@ -515,7 +551,7 @@ export function writeJobMark(cfg, entry, change = {}) {
     rmSync(path, { force: true });
     return { ...next, note: null };
   }
-  writeFileSync(path, jobNote(entry, next));
+  writeFileSync(path, jobNote(entry, next, loadFit(cfg.vaultPath)));
   return { ...next, status: next.status || (entry.closed ? "closed" : "new"), note: path };
 }
 
@@ -588,6 +624,7 @@ export function buildVault(cfg, store, log = console.log) {
       : new Date(Date.now() - cfg.pruneClosedAfterDays * 86400000).toISOString().slice(0, 10);
 
   const mode = noteMode(cfg);
+  const ratings = loadFit(vault);
   const wanted = new Set();
   const dropped = new Set();
   const retained = [];
@@ -617,7 +654,7 @@ export function buildVault(cfg, store, log = console.log) {
     if (from) carried++;
     wanted.add(entry.file);
     retained.push(entry);
-    writeFileSync(path, jobNote(entry, existing));
+    writeFileSync(path, jobNote(entry, existing, ratings));
     written++;
   }
 

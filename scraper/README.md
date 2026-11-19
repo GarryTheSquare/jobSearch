@@ -295,7 +295,14 @@ generated part of a note. It preserves:
 
 - the `status:` field — set it to `interested`, `applied`, `interview`, `rejected`
 - the `applied:` field
+- the `fit:` field — a 0–100 rating of how well the vacancy suits you
 - anything you write under the `## Notes` heading
+
+`fit` ratings are stored in `Profile/fit.json` (`{ "<jobkey>": 0–100 }`), which is
+never regenerated, so a vacancy keeps its rating even while it has no note. Every note
+the scraper writes takes its `fit:` from there unless the note already carries one.
+Setting `fit` does not count as touching a note: it neither keeps a note from being
+pruned nor makes one appear in "marked" mode.
 
 This holds across renames too: when a note's file name changes — because a key gained
 its source prefix, or because two postings merged into one note — the edits are carried

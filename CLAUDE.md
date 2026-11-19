@@ -31,6 +31,7 @@ npm run scrape -- --sources remotive,jobicy --max-pages 3 --scrape-only
 npm run scrape -- --list-sources
 npm run scrape -- --help
 npm run vault                             # rebuild JobVault from data/jobs.json, no network
+npm run browse                            # the job browser: localhost:4173
 npm run apply -- --list                   # what's marked `status: apply`
 npm run apply -- --json                   # the queue the /apply skill consumes
 npm run panel pull|push|run|stop|status   # the Obsidian panel's back end
@@ -125,6 +126,17 @@ YAML shapes Obsidian/Meta Bind don't emit rather than guessing. Two values are
 spelled differently in the note because an empty string is invisible in a form:
 query `*` = `""`, jobType `any` = `""`. The panel touches only the keys it owns
 and leaves every other config key untouched.
+
+**Notes only for marked jobs.** With `jobNotes: "marked"` (the default)
+`buildVault` writes a job note only when `untouched()` is false — every other
+live vacancy is counted on the dashboard but has no file. `browse.js` is how
+they are seen: a localhost `node:http` server (no dependency) that holds the
+store in memory, builds its list with the same `jobEntries()` clustering, and
+marks a job through `writeJobMark()` — which writes the note with the given
+status/notes, or removes it again when the change leaves it untouched. So the
+note stays the single source of truth for a mark; the browser keeps nothing of
+its own except hidden keys in `<vault>/.browse/hidden.json`. Dashboard and
+company links must only point at notes that exist (`meta.hasCompanyNote`).
 
 **Applying** is a deterministic half and a written half. `apply.js`/`apply-cli.js`
 find notes marked `status: apply`, gather each vacancy into `Brief.md`, and lay

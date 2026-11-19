@@ -38,6 +38,12 @@ const DEFAULTS = {
   // gone this long are removed. Counted from the last sighting, on top of
   // `staleAfterDays`; the store keeps every record either way. null: keep them.
   pruneClosedAfterDays: 30,
+  // "marked": a job note only for vacancies you have marked (in the job
+  // browser or by hand); the rest are browsed with `npm run browse`. "all": a
+  // note per vacancy, as before — Obsidian slows down past a few thousand.
+  jobNotes: "marked",
+  // Where `npm run browse` listens (localhost only).
+  browsePort: 4173,
   dedupeAcrossSources: true,
   // Remote boards are worldwide; these decide what counts as reachable from
   // here. null for regionInclude disables the filter entirely. See

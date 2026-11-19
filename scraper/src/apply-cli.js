@@ -23,7 +23,8 @@ Prepares an application folder for every job note whose \`status:\` is \`apply\`
   --vault <path>      Vault location (default: config vaultPath)
   -h, --help
 
-Marking a job: open its note in Jobs/ and set
+Marking a job: press Apply on it in the job browser (npm run browse), or
+open its note in Jobs/ and set
 
     status: apply
 
@@ -81,7 +82,7 @@ const main = () => {
       console.log(`  ${String(n.fm.status).padEnd(10)} ${n.fm.company} — ${n.fm.title}`);
       console.log(`  ${" ".repeat(10)} ${n.fm.location || "—"}${n.fm.salary ? ` · ${n.fm.salary}` : ""} · ${n.fm.url || ""}`);
     }
-    if (!marked.length) console.log("  Nothing marked yet — set `status: apply` on a job note.");
+    if (!marked.length) console.log("  Nothing marked yet — mark one in `npm run browse`, or set `status: apply` on a job note.");
     if (unknown.length) console.log(`\n${unknown.length} note(s) carry an unrecognised status: ${[...new Set(unknown.map((n) => n.fm.status))].join(", ")}`);
     warnProfile(cfg, false);
     return;
@@ -119,7 +120,7 @@ const main = () => {
     console.log(`           ${relative(cfg.vaultPath, q.dir)}/`);
   }
   if (!queue.length) {
-    console.log("  Nothing marked yet — open a job note in Obsidian and set `status: apply`.");
+    console.log("  Nothing marked yet — mark one in `npm run browse`, or set `status: apply` on a job note.");
   } else {
     console.log(
       `\nBriefs written. ${pending.length} of them ${pending.length === 1 ? "still needs" : "still need"} a CV and a letter` +

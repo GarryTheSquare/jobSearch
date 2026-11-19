@@ -72,7 +72,8 @@ npm run scrape -- --list-sources
 npm run scrape -- --max-pages 10          # short run
 npm run scrape -- --query "developer" --query "data"
 npm run vault                             # rebuild the vault from stored data only
-npm run apply                             # gather the vacancies you marked in Obsidian
+npm run browse                            # search every vacancy and mark them, at localhost:4173
+npm run apply                             # gather the vacancies you marked
 npm run scrape -- --help
 ```
 
@@ -174,6 +175,8 @@ Top-level keys in `config.json` are the **global** settings, shared by every sou
 | `locationExclude` | `null` | Regex — drop jobs whose location matches (e.g. `"Nederland"`) |
 | `staleAfterDays` | `45` | Mark a job closed after this long unseen |
 | `pruneClosedAfterDays` | `30` | Delete an untouched note this long after the job was last seen (`null` keeps every note) |
+| `jobNotes` | `"marked"` | `"marked"`: a job note only for vacancies you have marked or annotated — browse the rest with `npm run browse`. `"all"`: a note per vacancy |
+| `browsePort` | `4173` | Where `npm run browse` listens (localhost only) |
 | `vaultPath` | `../JobVault` | Where the vault is written |
 
 Indeed-specific (they are top-level for historical reasons, and only Indeed reads them):
@@ -238,8 +241,9 @@ Setting `"enabled": false` leaves a source out of every run without removing it 
 JobVault/
 ├── Dashboard.md          counts, per-board totals, top employers, this week's postings
 ├── Indexes/              Jobs.base · By Board.base · Companies.base — plus To Apply.md, the shortlist
-├── Jobs/                 one note per vacancy, with YAML frontmatter
-├── Companies/            one note per employer, listing its jobs
+├── Jobs/                 a note per vacancy you marked (or per vacancy, with jobNotes: "all")
+├── Companies/            one note per employer of those jobs, listing them
+├── .browse/hidden.json   the vacancies you hid in the job browser
 ├── Profile/              your experience, skills and education — hand-written, never regenerated
 │   ├── Scraper.md        the control panel: settings and buttons (see above)
 │   └── Scraper Log.md    what the last run said — generated, rewritten as it goes
@@ -324,6 +328,42 @@ tallies, and if the vacancy is ever relisted the note is written again. Set
 `pruneClosedAfterDays` to `null` to keep every note forever — a rebuild then brings
 back everything that was pruned, since the store never dropped it.
 
+## The job browser
+
+At fifteen thousand vacancies a note per job is more than Obsidian wants to
+index, and almost all of them are notes nobody ever opens. So by default
+(`jobNotes: "marked"`) the vault only holds the jobs you have picked, and the
+whole store is browsed here instead:
+
+```bash
+npm run browse            # http://localhost:4173
+npm run browse -- --open  # and open it in your browser
+```
+
+or **Browse jobs** on the control panel. It loads `data/jobs.json` into memory
+(about a second), clusters it exactly like the vault does, and serves one page:
+search over title, company, place and field as you type — tick *also the advert
+text* for full-text search — with filters for local/remote, board, posting age,
+salary, delisted and hidden jobs. A newer store from a scrape is picked up on
+the next reload; so is a status you changed in Obsidian.
+
+Marking is a button or a key (`a` apply, `i` interested, `d` applied, `r`
+rejected, `n` unmark, `j`/`k` to move). A mark is written where it always was —
+`status:` in the job's note — so the note appears in `Jobs/` the moment you
+mark it and To Apply is refreshed with it. Un-mark it (and leave no notes) and
+the note goes again. The notes box writes `## Notes` in the same file, which is
+what the brief copies to the CV writer. `applied` is set to today when you mark
+a job applied.
+
+**Hide** (`h`) is for the ones you never want to see again. It is not a status
+and writes no note — that would rebuild the very pile this avoids — just the
+job's key in `JobVault/.browse/hidden.json`, a dot-folder Obsidian skips.
+
+The server listens on 127.0.0.1 only, checks the Host header, and requires a
+custom header on writes, so another web page cannot mark jobs through it.
+Set `jobNotes: "all"` to go back to a note per vacancy; the browser works in
+either mode.
+
 ## The profile
 
 `JobVault/Profile/` is the global answer to "what could go on my CV". It is
@@ -352,12 +392,13 @@ generated from placeholders is worse than no CV.
 The vacancies worth answering are picked by you, in Obsidian, and acted on by an
 agent. The handover between the two is one field.
 
-**1. Mark the job.** Open its note in `Jobs/` and change `status: new` to
-`status: apply`. `status` is one of the fields the generator preserves, so the
-mark survives every rescrape — and every marked vacancy shows up in
+**1. Mark the job.** In the job browser press **Apply** (or `a`) — or open its
+note in `Jobs/` and change `status: new` to `status: apply`; the browser does
+exactly that for you. `status` is one of the fields the generator preserves, so
+the mark survives every rescrape — and every marked vacancy shows up in
 `Indexes/To Apply.md`. Anything you want the writer to know about this vacancy
-in particular goes under `## Notes` in the same file; that is preserved too, and
-copied into the brief.
+in particular goes in the browser's notes box, which is `## Notes` in the same
+file; that is preserved too, and copied into the brief.
 
 **2. Gather them.** Press **Prepare the marked applications** in `Profile/Scraper.md`,
 or from the shell:

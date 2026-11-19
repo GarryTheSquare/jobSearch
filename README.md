@@ -126,6 +126,7 @@ npm run scrape -- --query "developer" --query "data"
 npm run scrape -- --list-sources          # what exists, and what each one costs
 npm run scrape -- --help
 npm run vault                             # rebuild the vault from the store, no network
+npm run browse                            # every vacancy in one searchable page, at localhost:4173
 npm run apply -- --list                   # what you've marked `status: apply`
 npm run panel pull|push|run|stop|status   # the Obsidian panel's back end
 ```
@@ -161,6 +162,7 @@ your search is yours. The settings that matter most:
 | `maxPagesPerQuery` | The page budget, which is what decides your yield on the very large boards |
 | `staleAfterDays` | How long a vacancy may go unseen before it's marked closed |
 | `pruneClosedAfterDays` | How long a closed job keeps its note, if you never marked or annotated it (`null` keeps them all) |
+| `jobNotes` | `"marked"` (default): the vault holds notes only for the jobs you mark; browse the rest with `npm run browse`. `"all"`: a note per vacancy, which Obsidian struggles with past a few thousand |
 
 Per-board overrides go under `sourceOptions.<id>`. The full table, the precedence
 rule and the reasoning behind both are in
@@ -168,9 +170,11 @@ rule and the reasoning behind both are in
 
 ## Applying
 
-1. In Obsidian, set `status: apply` on a job note — it shows up in
-   `Indexes/To Apply.md`. Anything you want the writer to know goes under
-   `## Notes` in that same note.
+1. Run `npm run browse` (or press **Browse jobs** on the panel), find the
+   vacancy and press **Apply**. That writes its note into the vault with
+   `status: apply`, and it shows up in `Indexes/To Apply.md`. Anything you want
+   the writer to know goes in the notes box — `## Notes` in that same note.
+   Setting `status: apply` on a note by hand in Obsidian does the same.
 2. `npm run apply` lays out `JobVault/Applications/<company> - <role>/` with a
    `Brief.md` gathered from every board that carried the vacancy, plus CV and
    letter stubs.

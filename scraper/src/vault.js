@@ -45,7 +45,7 @@ function legacyFileName(job) {
 /* A note stands for one vacancy, which may have been found on several boards.
    `anchor` fixes the file name (earliest sighting, so it never moves), while
    `primary` supplies the content (whichever board told us the most). */
-function toEntry(cluster) {
+export function toEntry(cluster) {
   const anchor = cluster.members
     .slice()
     .sort((a, b) => (a.firstSeen || "").localeCompare(b.firstSeen || "") || String(a.jobkey).localeCompare(String(b.jobkey)))[0];
@@ -58,8 +58,15 @@ function toEntry(cluster) {
   };
 }
 
+/* Every vacancy as the vault sees it: postings clustered across boards, one
+   entry per (potential) note. The job browser builds its list from this too, so
+   the two can never disagree about which postings are the same vacancy. */
+export function jobEntries(cfg, store) {
+  return clusterJobs(Object.values(store.jobs), { enabled: cfg.dedupeAcrossSources !== false }).map(toEntry);
+}
+
 /* Existing notes may carry hand-edited status and free-form notes; keep both. */
-function readExisting(path) {
+export function readExisting(path) {
   let raw;
   try {
     raw = readFileSync(path, "utf8");
@@ -81,7 +88,7 @@ const AUTO_STATUSES = new Set(["new", "closed"]);
 /* Untouched: an automatic status, no application date, and nothing written
    under `## Notes` — the three places the user's own work can be. A note that
    has never been opened reads as untouched too. */
-function untouched(existing) {
+export function untouched(existing) {
   if (!existing) return true;
   if (existing.status && !AUTO_STATUSES.has(existing.status)) return false;
   if (existing.applied && existing.applied !== "null") return false;
@@ -128,6 +135,33 @@ function hours(job) {
   if (job.hoursMin && job.hoursMax && job.hoursMin !== job.hoursMax) return `${job.hoursMin}–${job.hoursMax} uur`;
   return `${job.hoursMax || job.hoursMin} uur`;
 }
+
+/* The hand edits for an entry: from its own note, or — on the first run after a
+   rename (a key that gained its source prefix, or two postings that merged into
+   one note) — from whichever old file had them. `from` names that old file. */
+export function findExisting(jobsDir, entry) {
+  const existing = readExisting(join(jobsDir, entry.file));
+  if (existing) return { existing, from: null };
+  for (const member of entry.members) {
+    for (const name of [jobFileName(member), legacyFileName(member)].filter(Boolean)) {
+      if (name === entry.file) continue;
+      const old = join(jobsDir, name);
+      if (!existsSync(old)) continue;
+      const found = readExisting(old);
+      if (found) return { existing: found, from: name };
+    }
+  }
+  return { existing: null, from: null };
+}
+
+/* Which jobs get a note. "all" is the original behaviour: a note per vacancy.
+   "marked" writes notes only for vacancies you have touched — a status set, an
+   applied date, something under `## Notes` — and leaves the other thousands to
+   the job browser (`npm run browse`), which reads the store directly. Obsidian
+   indexes files, so this is the difference between a vault of 15 000 notes and
+   one of a few dozen. */
+export const NOTE_MODES = ["marked", "all"];
+export const noteMode = (cfg) => (NOTE_MODES.includes(cfg.jobNotes) ? cfg.jobNotes : "marked");
 
 function jobNote(entry, existing) {
   const job = entry.primary;
@@ -319,9 +353,28 @@ ${sourceRows}
 
 ${overlap}
 
+## Browsing the vacancies
+
+${
+  meta.mode === "marked"
+    ? `Only the vacancies you have marked have a note here — ${meta.notes} of ${open.length} open.
+The rest live in the **job browser**, which searches all of them at once and is
+where you mark one to apply:
+
+\`\`\`bash
+cd scraper && npm run browse     # then open http://localhost:${cfg.browsePort || 4173}
+\`\`\`
+
+(or the **Browse jobs** button on the [[Scraper]] panel). Marking a vacancy there
+writes its note into \`Jobs/\`, so everything below keeps working on what you
+picked. Set \`jobNotes: "all"\` in config.json to get a note for every vacancy back.`
+    : `Every vacancy has a note in \`Jobs/\`. \`npm run browse\` gives a faster way to search
+them; setting \`jobNotes: "marked"\` in config.json keeps only the ones you mark.`
+}
+
 ## Indexes
 
-- [[${JOBS_BASE}|Jobs]] — every open vacancy, with a view per cut: posted this
+- [[${JOBS_BASE}|Jobs]] — ${meta.mode === "marked" ? "the vacancies you have marked," : "every open vacancy,"} with a view per cut: posted this
   week, remote, salary stated, marked to apply, your pipeline, and the ones that
   have since been delisted.
 - [[${BOARDS_BASE}|By board]] — the same vacancies, one view per board.
@@ -345,15 +398,16 @@ the shipped views back.
 
 | Company | Open jobs |
 |---|---|
-${topCompanies.map(([c, n]) => `| [[${safeName(c)}]] | ${n} |`).join("\n")}
+${topCompanies.map(([c, n]) => `| ${meta.hasCompanyNote(c) ? `[[${safeName(c)}]]` : cell(c)} | ${n} |`).join("\n")}
 
-## New this week
+${meta.mode === "marked" ? "" : `## New this week
 
 ![[${JOBS_BASE}#New this week]]
 
-## Tracking your applications
+`}## Tracking your applications
 
-Every job note has a \`status\` field in its frontmatter. Change it to \`interested\`,
+Mark a vacancy in the job browser, or edit its note: every job note has a
+\`status\` field in its frontmatter. Change it to \`interested\`,
 \`apply\`, \`applied\`, \`interview\`, or \`rejected\` and it survives the next scrape — the
 scraper only rewrites the generated parts of a note, never your edits below
 \`${NOTES_HEADING}\`.
@@ -437,6 +491,44 @@ either way — nothing there is ever deleted for you.
 `;
 }
 
+/* One vacancy's mark, set from outside Obsidian (the job browser). The same
+   preservation rules as a full build: the note is rewritten from the store with
+   the given status, applied date and notes, and any field not given keeps what
+   the note already said. In "marked" mode a change that leaves the note
+   untouched — status back to `new`, notes emptied — removes the note again, so
+   un-marking really does take the job back out of the vault. */
+export function writeJobMark(cfg, entry, change = {}) {
+  const jobsDir = join(cfg.vaultPath, "Jobs");
+  mkdirSync(jobsDir, { recursive: true });
+  const { existing, from } = findExisting(jobsDir, entry);
+  const base = existing || { status: undefined, applied: undefined, notes: "" };
+  if (base.applied === "null") base.applied = undefined;
+  const next = {
+    status: change.status ?? base.status,
+    applied: change.applied !== undefined ? change.applied || undefined : base.applied,
+    notes: change.notes !== undefined ? String(change.notes).trimEnd() : base.notes,
+  };
+  if (next.status === "applied" && (!next.applied || next.applied === "null")) next.applied = today();
+  const path = join(jobsDir, entry.file);
+  if (from) rmSync(join(jobsDir, from));
+  if (noteMode(cfg) === "marked" && untouched(next)) {
+    rmSync(path, { force: true });
+    return { ...next, note: null };
+  }
+  writeFileSync(path, jobNote(entry, next));
+  return { ...next, status: next.status || (entry.closed ? "closed" : "new"), note: path };
+}
+
+/* The shortlist note, rebuilt on its own so a mark shows up in Obsidian without
+   waiting for the next full build. */
+export function writeToApply(cfg, entries) {
+  const indexDir = join(cfg.vaultPath, "Indexes");
+  mkdirSync(indexDir, { recursive: true });
+  const marked = markedJobs(cfg.vaultPath, DEFAULT_MARKS).marked;
+  writeFileSync(join(indexDir, "To Apply.md"), toApplyNote(marked, entries));
+  return marked.length;
+}
+
 const OBSIDIAN_CONFIG = {
   "app.json": { attachmentFolderPath: "Attachments", alwaysUpdateLinks: true, newLinkFormat: "shortest", useMarkdownLinks: false },
   "appearance.json": { accentColor: "" },
@@ -495,35 +587,18 @@ export function buildVault(cfg, store, log = console.log) {
       ? null
       : new Date(Date.now() - cfg.pruneClosedAfterDays * 86400000).toISOString().slice(0, 10);
 
+  const mode = noteMode(cfg);
   const wanted = new Set();
   const dropped = new Set();
   const retained = [];
+  const live = [];
+  let unnoted = 0;
   let written = 0;
   let carried = 0;
   let pruned = 0;
   for (const entry of entries) {
     const path = join(jobsDir, entry.file);
-    // On the first run after a rename — a key that gained its source prefix, or
-    // two postings that merged into one note — pick the hand edits up from
-    // whichever old file had them.
-    let existing = readExisting(path);
-    let renamed = false;
-    if (!existing) {
-      for (const member of entry.members) {
-        const candidates = [jobFileName(member), legacyFileName(member)].filter(Boolean);
-        for (const name of candidates) {
-          if (name === entry.file) continue;
-          const old = join(jobsDir, name);
-          if (!existsSync(old)) continue;
-          existing = readExisting(old);
-          if (existing) {
-            renamed = true;
-            break;
-          }
-        }
-        if (existing) break;
-      }
-    }
+    const { existing, from } = findExisting(jobsDir, entry);
     // Left out of `wanted`, so the sweep below deletes whatever is on disk. It
     // is counted here rather than there — a pruned note is not a stale one.
     if (prunable(entry, existing, pruneBefore)) {
@@ -531,7 +606,15 @@ export function buildVault(cfg, store, log = console.log) {
       pruned++;
       continue;
     }
-    if (renamed) carried++;
+    // Still a live listing — the dashboard counts it and the browser shows it —
+    // but in "marked" mode nobody has touched it, so it gets no note.
+    live.push(entry);
+    if (mode === "marked" && untouched(existing)) {
+      dropped.add(entry.file);
+      unnoted++;
+      continue;
+    }
+    if (from) carried++;
     wanted.add(entry.file);
     retained.push(entry);
     writeFileSync(path, jobNote(entry, existing));
@@ -587,7 +670,12 @@ export function buildVault(cfg, store, log = console.log) {
     marked: marked.length,
   };
 
-  writeFileSync(join(vault, "Dashboard.md"), dashboard(retained, cfg, meta));
+  // The counts are about every live listing, the links only about the ones
+  // that have a note — a company link must never point at a removed note.
+  meta.mode = mode;
+  meta.notes = retained.filter((e) => !e.closed).length;
+  meta.hasCompanyNote = (company) => byCompany.has(safeName(company));
+  writeFileSync(join(vault, "Dashboard.md"), dashboard(live, cfg, meta));
   writeFileSync(join(indexDir, "To Apply.md"), toApplyNote(marked, retained));
   // Everything else under Indexes/ is a Base: one query per view, written once,
   // instead of a Markdown table per vacancy rewritten on every run. The old
@@ -596,9 +684,10 @@ export function buildVault(cfg, store, log = console.log) {
   const staleIndexes = removeLegacyIndexes(vault);
 
   log(
-    `Vault written to ${vault}: ${written} job notes (${jobs.length} postings, ${
+    `Vault written to ${vault}: ${written} job notes (${jobs.length} postings, ${live.length} live vacancies, ${
       retained.filter((e) => e.members.length > 1).length
     } merged across boards), ${byCompany.size} company notes` +
+      (mode === "marked" && unnoted ? `, ${unnoted} unmarked vacancies left to the browser (npm run browse)` : "") +
       (carried ? `, ${carried} notes carried across a rename` : "") +
       (removed ? `, ${removed} stale notes removed` : "") +
       (pruned

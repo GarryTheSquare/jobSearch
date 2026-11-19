@@ -5,7 +5,8 @@ description: Write a CV and a cover letter for every vacancy marked `status: app
 
 # Writing the marked applications
 
-The user marks vacancies in Obsidian by setting `status: apply` in a job note.
+The user marks vacancies — in the job browser (`npm run browse`) or in Obsidian —
+which sets `status: apply` in a job note.
 This skill turns each of those into a tailored CV and cover letter, one
 `cv-writer` subagent per vacancy.
 

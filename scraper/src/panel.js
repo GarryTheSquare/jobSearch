@@ -309,11 +309,19 @@ Sort and job type are Indeed's; the other boards ignore them.
 - **Hide the browser window** \`INPUT[toggle:headless]\` — a visible one needs a display
 - **Vault folder** \`INPUT[text:vaultPath]\` — relative to \`scraper/\`; this vault is the default
 
+## Browse and mark
+
+Every vacancy, searchable in one list, opens in your web browser. Mark the ones
+you want there — a mark writes the job's note into \`Jobs/\`, so the vault only
+holds the vacancies you picked:
+
+${BUTTON("Browse jobs", "Scraper: browse jobs", "green")}
+
 ## Applying
 
-Mark a vacancy by setting \`status: apply\` in its note; it then shows up in
-[[To Apply]]. This gathers each marked job into an application folder with the
-facts a CV needs:
+Mark a vacancy in the job browser (or set \`status: apply\` in its note); it then
+shows up in [[To Apply]]. This gathers each marked job into an application
+folder with the facts a CV needs:
 
 ${BUTTON("Prepare the marked applications", "Scraper: prepare applications")}
 

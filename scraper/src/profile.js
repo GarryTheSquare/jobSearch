@@ -65,7 +65,9 @@ Two things are worth the effort:
 
 ## Applying
 
-1. Open a vacancy in \`Jobs/\` and set its \`status:\` to \`apply\`.
+1. Find the vacancy in the job browser (**Browse jobs** in [[Scraper]], or
+   \`cd scraper && npm run browse\`) and press **Apply** — or open its note in
+   \`Jobs/\` and set its \`status:\` to \`apply\` by hand.
 2. Every marked job appears in [[To Apply]].
 3. Press **Prepare the marked applications** in [[Scraper]] — or, from a shell,
    \`cd scraper && npm run apply\` — to gather a brief per marked job.

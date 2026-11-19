@@ -19,6 +19,19 @@ const USER_AGENT =
 
 const BLOCK_TITLES = [/blocked/i, /security check/i, /even geduld/i, /just a moment/i, /verify you are human/i];
 
+/* Since 2026 Indeed serves page 1 to anyone and puts every page after it behind
+   a sign-in: "Maak een account aan of log in om de volgende pagina's met
+   vacatures te bekijken". It answers HTTP 200 and matches no BLOCK_TITLE, so
+   without this the wall reads as an empty page — i.e. as the end of the results
+   — and a run that fetched 15 of 8000 vacancies looks like a clean sweep.
+   The cure is a signed-in session in `profileDir`, not a retry: back off and the
+   next page is walled just the same. */
+const LOGIN_WALL_TITLES = [/indeed[- ]accounts/i, /^inloggen\b/i, /^sign in\b/i];
+
+function isLoginWall(title) {
+  return LOGIN_WALL_TITLES.some((re) => re.test(title || ""));
+}
+
 export function searchUrl(cfg, query, start) {
   const p = new URLSearchParams();
   p.set("q", query || "");
@@ -63,7 +76,11 @@ function isBlocked(title) {
   return BLOCK_TITLES.some((re) => re.test(title || ""));
 }
 
-async function openBrowser(cfg) {
+/* Exported so `npm run indeed-login` can open the *same* browser — same profile
+   directory, same user agent, same stealth args — and leave a session behind
+   that the headless scrape then inherits. A session established in some other
+   browser would not survive the fingerprint difference. */
+export async function openBrowser(cfg) {
   const context = await chromium.launchPersistentContext(cfg.profileDir, {
     headless: cfg.headless,
     channel: "chromium",
@@ -131,6 +148,10 @@ async function fetchPage(page, url, cfg, log) {
     const title = await page.title().catch(() => "");
 
     if (gotResults) return { ok: true, status, ...(await page.evaluate(EXTRACT)) };
+
+    // Checked before the block and empty branches: the wall is a 200 with a
+    // sign-in title, so both of those would otherwise swallow it.
+    if (isLoginWall(title)) return { ok: true, status, loginWall: true, source: "loginwall", total: null, results: [] };
 
     if (isBlocked(title) || status === 403 || status === 429) {
       const backoff = 60000 * attempt;
@@ -236,6 +257,14 @@ export async function scrape(cfg, { log = console.log, onPage } = {}) {
         if (!res.ok) {
           log(`  giving up on this query after repeated blocks (page ${pageNo + 1})`);
           stats.blockedQueries.push(queryLabel);
+          break;
+        }
+
+        if (res.loginWall) {
+          log(`  page ${pageNo + 1}: Indeed wants a signed-in account to go further — stopping this query`);
+          stats.blockedQueries.push(
+            `${queryLabel} (sign-in wall at page ${pageNo + 1}; log in once in ${cfg.profileDir})`
+          );
           break;
         }
 

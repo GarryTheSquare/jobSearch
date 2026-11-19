@@ -31,6 +31,7 @@ npm run scrape -- --sources remotive,jobicy --max-pages 3 --scrape-only
 npm run scrape -- --list-sources
 npm run scrape -- --help
 npm run vault                             # rebuild JobVault from data/jobs.json, no network
+npm run browse                            # the job browser: localhost:4173
 npm run apply -- --list                   # what's marked `status: apply`
 npm run apply -- --json                   # the queue the /apply skill consumes
 npm run panel pull|push|run|stop|status   # the Obsidian panel's back end
@@ -93,13 +94,28 @@ company + title carry the match. A cluster forms *only* across different sources
 with at most one posting each — same fingerprint on the same board means two real
 vacancies, not a duplicate.
 
-**Vault generation** (`vault.js`) rewrites `Jobs/`, `Companies/`, `Indexes/` and
-`Dashboard.md` wholesale on every run, but merges rather than clobbers each job
-note: it preserves `status:`, `applied:`, and everything under `## Notes`, and
+**Vault generation** (`vault.js`) rewrites `Jobs/`, `Companies/`, `Dashboard.md`
+and `Indexes/To Apply.md` wholesale on every run, but merges rather than clobbers
+each job note: it preserves `status:`, `applied:`, and everything under `## Notes`, and
 carries those across file renames (via `legacyFileName` and cluster re-anchoring).
 Any change to note layout must keep that preservation intact — it is where all
-the user's own work lives. `Profile/` and `Applications/` are never regenerated;
+the user's own work lives. It is also what `pruneClosedAfterDays` keys off:
+a note is deleted once the vacancy has been closed that long *and* `untouched()`
+says nobody set a status, an applied date or wrote under `## Notes`. Pruned
+entries drop out of `retained`, which is what feeds the company notes and the
+dashboard — a pruned note must never be left linked from either. The store is
+untouched by all of it, so a relisted job gets its note back. `Profile/` and `Applications/` are never regenerated;
 `profile.js` only scaffolds missing templates.
+
+**The indexes are Obsidian Bases** (`bases.js`), not Markdown tables — a 700 KB
+`All Jobs.md` rebuilt per run was the vault's main cost. `Jobs.base`,
+`By Board.base` and `Companies.base` are written *if missing* (like the panel)
+because a view is a setting, not output; `removeLegacyIndexes` clears the
+Markdown indexes they replaced out of older vaults. They query frontmatter only,
+so any change to a job note's properties has to keep `company_note` (the
+employer as a link), `posted` (a real date, empty when unknown — never the
+string `unknown`), `closed`, `status`, `remote`, `salary` and `sources` as they
+are, or the views go blank.
 
 **Panel round-trip.** `Profile/Scraper.md`'s frontmatter *is* `config.json`.
 `panel.js` owns both directions of the translation plus the note layout;
@@ -110,6 +126,17 @@ YAML shapes Obsidian/Meta Bind don't emit rather than guessing. Two values are
 spelled differently in the note because an empty string is invisible in a form:
 query `*` = `""`, jobType `any` = `""`. The panel touches only the keys it owns
 and leaves every other config key untouched.
+
+**Notes only for marked jobs.** With `jobNotes: "marked"` (the default)
+`buildVault` writes a job note only when `untouched()` is false — every other
+live vacancy is counted on the dashboard but has no file. `browse.js` is how
+they are seen: a localhost `node:http` server (no dependency) that holds the
+store in memory, builds its list with the same `jobEntries()` clustering, and
+marks a job through `writeJobMark()` — which writes the note with the given
+status/notes, or removes it again when the change leaves it untouched. So the
+note stays the single source of truth for a mark; the browser keeps nothing of
+its own except hidden keys in `<vault>/.browse/hidden.json`. Dashboard and
+company links must only point at notes that exist (`meta.hasCompanyNote`).
 
 **Applying** is a deterministic half and a written half. `apply.js`/`apply-cli.js`
 find notes marked `status: apply`, gather each vacancy into `Brief.md`, and lay

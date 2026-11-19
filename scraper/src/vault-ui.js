@@ -19,6 +19,7 @@
      stop                    stop the run that is going
      status                  refresh the log note's numbers
      apply                   gather the vacancies marked `status: apply`
+     browse                  start the job browser (if needed) and open it
      run-worker              internal: the background run itself
 */
 
@@ -37,6 +38,7 @@ import {
 const SELF = fileURLToPath(import.meta.url);
 const CLI = join(ROOT, "src", "cli.js");
 const APPLY_CLI = join(ROOT, "src", "apply-cli.js");
+const BROWSE = join(ROOT, "src", "browse.js");
 const PID_FILE = join(ROOT, "data", "run.pid");
 const JOB_FILE = join(ROOT, "data", "run.json");
 const CRASH_LOG = join(ROOT, "data", "run-crash.log");
@@ -90,6 +92,16 @@ const COMMANDS = {
     const output = `${result.stdout || ""}${result.stderr || ""}`.trim();
     if (result.status !== 0) throw new Error(output || `apply exited with code ${result.status}`);
     return output.split("\n").slice(-12).join("\n");
+  },
+
+  /* The browser is a server that outlives the button press, so it is started
+     detached like a run. A second press finds the port taken and just opens
+     the page — see startBrowser. */
+  browse: () => {
+    const child = spawn(process.execPath, [BROWSE, "--open"], { cwd: ROOT, detached: true, stdio: "ignore" });
+    child.unref();
+    const port = loadConfig().browsePort || 4173;
+    return `Job browser on http://localhost:${port} — opening it in your browser`;
   },
 
   "run-worker": () => worker(),

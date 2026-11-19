@@ -300,7 +300,8 @@ generated part of a note. It preserves:
 
 `fit` ratings are stored in `Profile/fit.json` (`{ "<jobkey>": 0–100 }`), which is
 never regenerated, so a vacancy keeps its rating even while it has no note. Every note
-the scraper writes takes its `fit:` from there unless the note already carries one.
+the scraper writes takes its `fit:` from there unless the note already carries one,
+and shows it again as the first row of the note's facts table (**Fit** · `72 / 100`).
 Setting `fit` does not count as touching a note: it neither keeps a note from being
 pruned nor makes one appear in "marked" mode.
 
@@ -368,6 +369,12 @@ a month counts ×12, a week ×52, a day ×260, and an hour is a year over 52 wee
 of the job's own hours if it states 32 or more, else 40. Holiday pay is not
 added. A salary with no period is converted only when it can only be yearly
 (15 000 or more) — Hoofdkraan's "€50 - €350" is a task budget, not a wage.
+
+Each vacancy's `fit` rating (0–100, from `Profile/fit.json`; a `fit:` typed into
+its note wins) shows as a badge on the row and as the first fact in the detail
+pane. Sort by **Best fit** — unrated jobs sink to the bottom — and narrow with the
+**Fit** filter (30, 50, 60 or 70 and up). The ratings file is re-read when it
+changes, so newly rated jobs appear on the next reload.
 
 **Hide** (`h`) is for the ones you never want to see again. It is not a status
 and writes no note — that would rebuild the very pile this avoids — just the

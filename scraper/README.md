@@ -173,6 +173,7 @@ Top-level keys in `config.json` are the **global** settings, shared by every sou
 | `locationInclude` | `null` | Regex — keep only jobs whose location matches |
 | `locationExclude` | `null` | Regex — drop jobs whose location matches (e.g. `"Nederland"`) |
 | `staleAfterDays` | `45` | Mark a job closed after this long unseen |
+| `pruneClosedAfterDays` | `30` | Delete an untouched note this long after the job was last seen (`null` keeps every note) |
 | `vaultPath` | `../JobVault` | Where the vault is written |
 
 Indeed-specific (they are top-level for historical reasons, and only Indeed reads them):
@@ -235,8 +236,8 @@ Setting `"enabled": false` leaves a source out of every run without removing it 
 
 ```
 JobVault/
-├── Dashboard.md          counts, per-board totals, top employers, newest postings
-├── Indexes/              All Jobs · New This Week · Remote Jobs · With Salary · By Company · By Source · To Apply · Closed Jobs
+├── Dashboard.md          counts, per-board totals, top employers, this week's postings
+├── Indexes/              Jobs.base · By Board.base · Companies.base — plus To Apply.md, the shortlist
 ├── Jobs/                 one note per vacancy, with YAML frontmatter
 ├── Companies/            one note per employer, listing its jobs
 ├── Profile/              your experience, skills and education — hand-written, never regenerated
@@ -245,15 +246,44 @@ JobVault/
 └── Applications/         one folder per vacancy you marked, with its CV and cover letter
 ```
 
-The first four are generated: they are rebuilt wholesale from `data/jobs.json` on
-every run and are not a place to keep anything. The last two are the other half
-of the vault — your side of the application rather than the board's — and the
-scraper only ever adds to them. The two `Scraper` notes are the exception inside
-`Profile/`: they belong to the control panel, and it maintains them.
+`Jobs/`, `Companies/` and `Dashboard.md` are generated: rebuilt wholesale from
+`data/jobs.json` on every run, and not a place to keep anything. `Profile/` and
+`Applications/` are the other half of the vault — your side of the application
+rather than the board's — and the scraper only ever adds to them. The two
+`Scraper` notes are the exception inside `Profile/`: they belong to the control
+panel, and it maintains them.
+
+### The indexes are Bases
+
+`Indexes/` used to hold a Markdown table per cut of the data — every open
+listing, this week's, the remote ones — rebuilt from the store on every run. At
+three thousand vacancies "All Jobs" alone was a 700 KB note that Obsidian had to
+parse and render in one go, and there were six more like it.
+
+They are [Bases](https://obsidian.md/help/bases) now (Obsidian 1.9+, a core
+plugin — nothing to install). A Base is a query over the frontmatter the job
+notes already carry, so the same seven views are 3 KB of YAML and the rows are
+built from Obsidian's metadata cache when you open one:
+
+| File | Views |
+|---|---|
+| `Jobs.base` | All jobs · New this week · Remote · With salary · To apply · Pipeline · Closed |
+| `By Board.base` | one per board, filtered on `sources` |
+| `Companies.base` | Hiring now · Everyone seen |
+
+Because a view is a setting rather than output, these three are written **once**
+and never rewritten — sort them differently, add a column, throw away a view you
+never open. Deleting one restores the shipped version on the next build, which
+is also how to pick up a board added to the scraper after the vault was built.
+
+`Indexes/To Apply.md` is still generated: it is a shortlist with links into
+`Applications/`, not a bulk table, and it is small.
 
 Each job note carries frontmatter (`title`, `company`, `location`, `salary`, `hours`,
 `job_types`, `categories`, `education`, `remote`, `posted`, `expires`, `sources`,
-`source_urls`, `status`, …) so Obsidian properties, search and Dataview all work on it.
+`source_urls`, `status`, …) so Obsidian properties, search, Bases and Dataview all work
+on it. `company_note` holds the same employer as a link, which is what the Bases views
+show in their Company column.
 
 **Your edits survive re-runs.** On every rebuild the scraper rewrites only the
 generated part of a note. It preserves:
@@ -269,6 +299,30 @@ over from the old file before it is removed.
 Jobs that stop appearing are kept and marked `closed: true` after `staleAfterDays`, so
 your history doesn't evaporate. Only the sources that actually ran are aged, so scraping
 one board never quietly closes another's listings.
+
+### Pruning
+
+A sweep of the boards adds thousands of notes, and until you mark one, nothing ever
+took a note away again. Obsidian's index is a count of files rather than a count of
+bytes, so a vault that only grows eventually gets slow to open and slow to search.
+
+So a job note is deleted once **all** of these hold:
+
+- the vacancy is `closed` — gone from every board that carried it
+- it was last seen more than `pruneClosedAfterDays` ago (30 by default, counted from
+  the last sighting, so on top of the 45 days it took to be marked closed)
+- and it is *untouched*: `status` is still `new` or `closed`, `applied` is empty, and
+  you have written nothing under `## Notes`
+
+Touch a note in any of those three ways and it is kept for good, however long the
+vacancy has been gone. A company note is removed the same way, once it has no jobs
+left to list and you have written nothing in it.
+
+Nothing is lost by this. `data/jobs.json` is the record, not the vault: the job keeps
+its `firstSeen`, its `lastSeen` and its closed flag, it still counts in the per-board
+tallies, and if the vacancy is ever relisted the note is written again. Set
+`pruneClosedAfterDays` to `null` to keep every note forever — a rebuild then brings
+back everything that was pruned, since the store never dropped it.
 
 ## The profile
 
@@ -349,8 +403,8 @@ another scrape is safe. Anything you dislike about the writing belongs in
 `Profile/Voice.md` as a rule, where it holds for every application after it.
 
 When you send one, set `status: applied` and `applied: 2026-09-06` in the job
-note. Both survive the next scrape, and the Dataview query on the dashboard
-turns the vault into a pipeline.
+note. Both survive the next scrape, and the **Pipeline** view — in `Jobs.base`,
+embedded at the foot of the dashboard — turns the vault into a pipeline.
 
 ### Deduplication
 

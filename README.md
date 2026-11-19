@@ -160,6 +160,7 @@ your search is yours. The settings that matter most:
 | `queries` | Search terms; `""` means *every* job |
 | `maxPagesPerQuery` | The page budget, which is what decides your yield on the very large boards |
 | `staleAfterDays` | How long a vacancy may go unseen before it's marked closed |
+| `pruneClosedAfterDays` | How long a closed job keeps its note, if you never marked or annotated it (`null` keeps them all) |
 
 Per-board overrides go under `sourceOptions.<id>`. The full table, the precedence
 rule and the reasoning behind both are in
@@ -201,8 +202,12 @@ Generated or personal, and therefore not committed — a clone rebuilds all of i
 - `scraper/data/jobs.json`, the durable store. Never rebuilt from scratch;
   deleting it loses your `firstSeen` dates and closed-job history.
 - `scraper/config.json`, your settings.
-- `JobVault/Jobs/`, `Companies/`, `Indexes/`, `Dashboard.md` — rewritten
-  wholesale on every run.
+- `JobVault/Jobs/`, `Companies/`, `Dashboard.md` and `Indexes/To Apply.md` —
+  rewritten wholesale on every run.
+- `JobVault/Indexes/*.base` — the [Bases](https://obsidian.md/help/bases) the
+  vault is browsed through: All jobs, New this week, Remote, With salary, To
+  apply, Pipeline, Closed, one view per board, and the companies. Written once
+  and then yours to rearrange; delete one to get the shipped views back.
 - `JobVault/Profile/` and `JobVault/Applications/` — yours. Scaffolded as empty
   templates on the first build and never touched again.
 

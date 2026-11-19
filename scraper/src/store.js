@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, renameSync } from "node:fs";
 import { dirname } from "node:path";
 import { makeKey } from "./sources/util.js";
 
@@ -32,9 +32,16 @@ export function loadStore(file) {
   }
 }
 
+/* Written to a sibling temp file and renamed into place: the store is
+   checkpointed on every result page, and a kill part-way through a plain write
+   truncates it — losing every firstSeen date and the closed-job history, which
+   nothing can rebuild. rename(2) within a directory is atomic, so an
+   interrupted save leaves the previous store untouched. */
 export function saveStore(file, store) {
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify(store, null, 2) + "\n");
+  const tmp = `${file}.tmp`;
+  writeFileSync(tmp, JSON.stringify(store, null, 2) + "\n");
+  renameSync(tmp, file);
 }
 
 /* Folds a batch of scraped jobs into the store. Called once per result page so a

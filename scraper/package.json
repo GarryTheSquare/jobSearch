@@ -9,6 +9,7 @@
     "scrape": "node src/cli.js",
     "vault": "node src/cli.js --vault-only",
     "panel": "node src/vault-ui.js",
+    "indeed-login": "node src/indeed-login.js",
     "postinstall": "playwright install chromium",
     "apply": "node src/apply-cli.js"
   },

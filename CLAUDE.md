@@ -93,13 +93,28 @@ company + title carry the match. A cluster forms *only* across different sources
 with at most one posting each — same fingerprint on the same board means two real
 vacancies, not a duplicate.
 
-**Vault generation** (`vault.js`) rewrites `Jobs/`, `Companies/`, `Indexes/` and
-`Dashboard.md` wholesale on every run, but merges rather than clobbers each job
-note: it preserves `status:`, `applied:`, and everything under `## Notes`, and
+**Vault generation** (`vault.js`) rewrites `Jobs/`, `Companies/`, `Dashboard.md`
+and `Indexes/To Apply.md` wholesale on every run, but merges rather than clobbers
+each job note: it preserves `status:`, `applied:`, and everything under `## Notes`, and
 carries those across file renames (via `legacyFileName` and cluster re-anchoring).
 Any change to note layout must keep that preservation intact — it is where all
-the user's own work lives. `Profile/` and `Applications/` are never regenerated;
+the user's own work lives. It is also what `pruneClosedAfterDays` keys off:
+a note is deleted once the vacancy has been closed that long *and* `untouched()`
+says nobody set a status, an applied date or wrote under `## Notes`. Pruned
+entries drop out of `retained`, which is what feeds the company notes and the
+dashboard — a pruned note must never be left linked from either. The store is
+untouched by all of it, so a relisted job gets its note back. `Profile/` and `Applications/` are never regenerated;
 `profile.js` only scaffolds missing templates.
+
+**The indexes are Obsidian Bases** (`bases.js`), not Markdown tables — a 700 KB
+`All Jobs.md` rebuilt per run was the vault's main cost. `Jobs.base`,
+`By Board.base` and `Companies.base` are written *if missing* (like the panel)
+because a view is a setting, not output; `removeLegacyIndexes` clears the
+Markdown indexes they replaced out of older vaults. They query frontmatter only,
+so any change to a job note's properties has to keep `company_note` (the
+employer as a link), `posted` (a real date, empty when unknown — never the
+string `unknown`), `closed`, `status`, `remote`, `salary` and `sources` as they
+are, or the views go blank.
 
 **Panel round-trip.** `Profile/Scraper.md`'s frontmatter *is* `config.json`.
 `panel.js` owns both directions of the translation plus the note layout;

@@ -1,7 +1,7 @@
 /* The global career profile: the hand-written half of the vault.
 
-   Everything under Jobs/, Companies/, Indexes/ and Dashboard.md is generated
-   from data/jobs.json and is rewritten on every run. Profile/ is the opposite —
+   Everything under Jobs/, Companies/ and Dashboard.md is generated from
+   data/jobs.json and is rewritten on every run. Profile/ is the opposite —
    it is written once, as a set of empty templates, and after that it belongs to
    you. Nothing here is ever overwritten.
 
@@ -26,9 +26,12 @@ tags: ["profile"]
 # Profile
 
 The hand-written half of the vault. Everything else — \`Jobs/\`, \`Companies/\`,
-\`Indexes/\`, \`Dashboard.md\` — is regenerated from the scraper's store on every
-run and your edits there would be lost. **Nothing in this folder is ever
-touched by the scraper.** It is yours.
+\`Dashboard.md\` — is regenerated from the scraper's store on every run and your
+edits there would be lost. **Nothing in this folder is ever touched by the
+scraper.** It is yours.
+
+(The Bases under \`Indexes/\` are the middle case: written once, then yours to
+rearrange. They are views over the generated notes, not the notes themselves.)
 
 The two exceptions share the folder without belonging to it: [[Scraper]] is the
 control panel — it runs the scraper, and its properties are the scraper's

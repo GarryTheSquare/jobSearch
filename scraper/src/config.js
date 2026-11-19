@@ -32,6 +32,12 @@ const DEFAULTS = {
   locationInclude: null,
   locationExclude: null,
   staleAfterDays: 45,
+  // How long a delisted vacancy keeps its note in the vault. Obsidian indexes a
+  // file count rather than a byte count, and a board sweep adds thousands of
+  // notes that will never be read, so untouched notes for jobs that have been
+  // gone this long are removed. Counted from the last sighting, on top of
+  // `staleAfterDays`; the store keeps every record either way. null: keep them.
+  pruneClosedAfterDays: 30,
   dedupeAcrossSources: true,
   // Remote boards are worldwide; these decide what counts as reachable from
   // here. null for regionInclude disables the filter entirely. See

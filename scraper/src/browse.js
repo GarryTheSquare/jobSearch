@@ -31,6 +31,7 @@ import { loadConfig } from "./config.js";
 import { loadStore } from "./store.js";
 import { describeSources, labelFor } from "./sources/index.js";
 import { jobEntries, writeJobMark, writeToApply, findExisting, noteMode } from "./vault.js";
+import { salaryFigures } from "./salary.js";
 import { readJobNotes, prepareApplications, applicationDirName, KNOWN_STATUSES, DEFAULT_MARKS, APPLICATIONS_DIR } from "./apply.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -126,12 +127,16 @@ function createState(cfg) {
         const m = e.members;
         const j = e.primary;
         const sources = uniq(m.map((x) => x.source));
+        const paid = m.find((x) => x.salary);
+        const pay = paid ? salaryFigures(paid.salary, paid.hoursMax || paid.hoursMin ? paid : j) : null;
         return {
           k: String(e.anchor.jobkey),
           t: j.title || "",
           c: j.company || "",
           l: j.location || "",
-          s: m.map((x) => x.salary).find(Boolean) || "",
+          s: paid?.salary || "",
+          sy: pay?.yearly || "",
+          sh: pay?.hourly || "",
           p: m.map((x) => x.postedAt).filter(Boolean).sort()[0] || "",
           f: m.map((x) => x.firstSeen).filter(Boolean).sort()[0] || "",
           ls: m.map((x) => x.lastSeen).filter(Boolean).sort().at(-1) || "",
@@ -176,6 +181,8 @@ function createState(cfg) {
     const description = m.map((x) => x.description || x.summary || "").sort((a, b) => b.length - a.length)[0] || "";
     const hours = j.hoursMin || j.hoursMax ? (j.hoursMin && j.hoursMax && j.hoursMin !== j.hoursMax ? `${j.hoursMin}–${j.hoursMax} uur` : `${j.hoursMax || j.hoursMin} uur`) : "";
     const rated = m.find((x) => x.companyRating);
+    const paid = m.find((x) => x.salary);
+    const pay = paid ? salaryFigures(paid.salary, paid.hoursMax || paid.hoursMin ? paid : j) : null;
     const appDir = applicationDirName({ fm: { company: j.company, title: j.title, jobkey: e.anchor.jobkey } });
     return {
       k: key,
@@ -191,7 +198,9 @@ function createState(cfg) {
       description,
       application: existsSync(join(cfg.vaultPath, APPLICATIONS_DIR, appDir)) ? `${APPLICATIONS_DIR}/${appDir}` : "",
       facts: [
-        ["Salary", m.map((x) => x.salary).find(Boolean)],
+        ["Salary", paid?.salary],
+        ["Yearly", pay ? `${pay.yearly} (${pay.yearlyBasis})` : ""],
+        ["Hourly", pay ? `${pay.hourly} (${pay.hourlyBasis})` : ""],
         ["Hours", hours],
         ["Type", uniq(m.flatMap((x) => x.jobTypes)).join(", ")],
         ["Field", uniq(m.flatMap((x) => x.categories)).slice(0, 12).join(", ")],

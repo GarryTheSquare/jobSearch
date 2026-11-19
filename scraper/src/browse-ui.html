@@ -54,6 +54,7 @@ aside .check { display: flex; margin: 4px 0; color: var(--ink); }
 .row .d { color: var(--muted); font-size: 12px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .row .tags { grid-column: 1 / -1; display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
 .row.hid { opacity: .5; }
+.chip.pay { background: transparent; border: 1px solid var(--line); }
 .chip { font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--chip); color: var(--muted); white-space: nowrap; }
 .st { font-size: 11px; padding: 1px 7px; border-radius: 99px; color: #fff; font-weight: 600; }
 .st-apply { background: var(--apply); } .st-interested { background: var(--interested); } .st-applied { background: var(--applied); }
@@ -274,6 +275,7 @@ function rowFor(j) {
   if (j.h) tags.push(el("span", { class: "chip", text: "hidden" }));
   if (j.r) tags.push(el("span", { class: "chip", text: "remote" }));
   if (j.s) tags.push(el("span", { class: "chip", text: j.s }));
+  if (j.sy) tags.push(el("span", { class: "chip pay", text: `${j.sy} · ${j.sh}`, title: "Converted from the stated salary" }));
   for (const s of j.src) tags.push(el("span", { class: "chip", text: boards.get(s) || s }));
   if (j.n) tags.push(el("span", { class: "chip", text: "✎ notes" }));
   return el("div", { class: "row" + (j.k === selected ? " sel" : "") + (j.h ? " hid" : ""), "data-k": j.k, onclick: () => select(j.k) },

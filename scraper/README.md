@@ -356,6 +356,12 @@ the note goes again. The notes box writes `## Notes` in the same file, which is
 what the brief copies to the CV writer. `applied` is set to today when you mark
 a job applied.
 
+A stated salary is also shown as a yearly and an hourly figure (`src/salary.js`):
+a month counts ×12, a week ×52, a day ×260, and an hour is a year over 52 weeks
+of the job's own hours if it states 32 or more, else 40. Holiday pay is not
+added. A salary with no period is converted only when it can only be yearly
+(15 000 or more) — Hoofdkraan's "€50 - €350" is a task budget, not a wage.
+
 **Hide** (`h`) is for the ones you never want to see again. It is not a status
 and writes no note — that would rebuild the very pile this avoids — just the
 job's key in `JobVault/.browse/hidden.json`, a dot-folder Obsidian skips.

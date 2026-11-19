@@ -44,6 +44,8 @@ where you can read them and mark the ones to apply for.
 
   --port <n>      Port to listen on (default: config browsePort, else ${DEFAULT_PORT})
   --open          Open the page in your browser once it is up
+  --allow-host <name>  Also accept requests for this host name (repeatable) —
+                  for a reverse proxy in front; adds to config browseHosts
   --vault <path>  Vault location (default: config vaultPath)
   -h, --help
 `;
@@ -54,6 +56,7 @@ function parseArgs(argv) {
     switch (argv[i]) {
       case "--port": opts.port = Number(argv[++i]); break;
       case "--open": opts.open = true; break;
+      case "--allow-host": (opts.overrides.browseHosts ||= []).push(argv[++i]); break;
       case "--vault": opts.overrides.vaultPath = argv[++i]; break;
       case "-h":
       case "--help": opts.help = true; break;
@@ -239,11 +242,19 @@ async function readJson(req) {
 
 function handler(state, port) {
   const cfg = state.cfg;
-  const hosts = new Set([`localhost:${port}`, `127.0.0.1:${port}`]);
+  /* Behind a reverse proxy (Caddy, say) the browser's Host header is the
+     proxy's name, not ours; `browseHosts` lists the names it may arrive under.
+     A bare name matches any port. The page uses relative URLs, so it works
+     mounted under a sub-path as well as at the root. */
+  const hosts = new Set([`localhost:${port}`, `127.0.0.1:${port}`, ...(cfg.browseHosts || [])].map((h) => String(h).toLowerCase()));
+  const allowed = (host = "") => {
+    host = host.toLowerCase();
+    return hosts.has(host) || hosts.has(host.replace(/:\d+$/, ""));
+  };
 
   return async (req, res) => {
     try {
-      if (!hosts.has(req.headers.host)) return send(req, res, 403, { error: "unexpected host" });
+      if (!allowed(req.headers.host)) return send(req, res, 403, { error: "unexpected host" });
       const url = new URL(req.url, `http://${req.headers.host}`);
       const route = `${req.method} ${url.pathname}`;
 
@@ -332,7 +343,9 @@ function openInBrowser(url) {
 }
 
 export function startBrowser({ port, open = false, overrides = {} } = {}) {
-  const cfg = loadConfig(overrides);
+  const extra = overrides.browseHosts || [];
+  const cfg = loadConfig({ ...overrides, browseHosts: undefined });
+  cfg.browseHosts = [...(cfg.browseHosts || []), ...extra];
   port = port || cfg.browsePort || DEFAULT_PORT;
   const state = createState(cfg);
   const server = createServer(handler(state, port));

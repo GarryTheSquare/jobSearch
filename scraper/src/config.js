@@ -44,6 +44,9 @@ const DEFAULTS = {
   jobNotes: "marked",
   // Where `npm run browse` listens (localhost only).
   browsePort: 4173,
+  // Extra Host names the browser answers to — for a reverse proxy in front of
+  // it, e.g. ["rico-server-01", "192.168.1.10"]. A bare name matches any port.
+  browseHosts: [],
   dedupeAcrossSources: true,
   // Remote boards are worldwide; these decide what counts as reachable from
   // here. null for regionInclude disables the filter entirely. See

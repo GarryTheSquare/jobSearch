@@ -177,6 +177,7 @@ Top-level keys in `config.json` are the **global** settings, shared by every sou
 | `pruneClosedAfterDays` | `30` | Delete an untouched note this long after the job was last seen (`null` keeps every note) |
 | `jobNotes` | `"marked"` | `"marked"`: a job note only for vacancies you have marked or annotated — browse the rest with `npm run browse`. `"all"`: a note per vacancy |
 | `browsePort` | `4173` | Where `npm run browse` listens (localhost only) |
+| `browseHosts` | `[]` | Extra Host names the browser answers to, for a reverse proxy in front of it (also `--allow-host`) |
 | `vaultPath` | `../JobVault` | Where the vault is written |
 
 Indeed-specific (they are top-level for historical reasons, and only Indeed reads them):
@@ -363,6 +364,25 @@ The server listens on 127.0.0.1 only, checks the Host header, and requires a
 custom header on writes, so another web page cannot mark jobs through it.
 Set `jobNotes: "all"` to go back to a note per vacancy; the browser works in
 either mode.
+
+To reach it from other machines, put a reverse proxy in front rather than
+binding it wider. The page uses relative URLs, so a sub-path works; tell the
+server which names it will be asked for, since it refuses unknown Host headers:
+
+```
+# Caddyfile
+redir /jobs /jobs/
+handle_path /jobs/* {
+	reverse_proxy 127.0.0.1:4173
+}
+```
+
+```bash
+node src/browse.js --allow-host my-server --allow-host 192.168.1.10
+```
+
+There is no login — anyone who can reach the proxy can mark and hide jobs — so
+keep it on a LAN or a tailnet, or add `basic_auth` in the proxy.
 
 ## The profile
 

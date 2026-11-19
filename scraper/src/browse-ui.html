@@ -187,7 +187,7 @@ function persist() {
 }
 
 async function load() {
-  const data = await api("/api/jobs");
+  const data = await api("api/jobs");
   meta = data.meta;
   jobs = data.jobs;
   byKey = new Map(jobs.map((j) => [j.k, j]));
@@ -218,7 +218,7 @@ async function runSearch() {
   const q = $("#q").value.trim();
   deepKeys = null;
   if ($("#deep").checked && q) {
-    const { keys } = await api("/api/search?q=" + encodeURIComponent(q));
+    const { keys } = await api("api/search?q=" + encodeURIComponent(q));
     if ($("#q").value.trim() !== q) return; // typed on while waiting
     deepKeys = new Set(keys || []);
   }
@@ -314,7 +314,7 @@ async function select(k, { scroll = false } = {}) {
   if (matchMedia("(max-width: 900px)").matches) document.body.classList.add("reading");
   const box = $("#detail");
   try {
-    const d = await api("/api/job?k=" + encodeURIComponent(k));
+    const d = await api("api/job?k=" + encodeURIComponent(k));
     if (selected !== k) return;
     current = d;
     renderDetail(d);
@@ -354,7 +354,7 @@ async function mark(change) {
   if (!current) return;
   const k = current.k;
   try {
-    const r = await api("/api/mark", { k, ...change });
+    const r = await api("api/mark", { k, ...change });
     const j = byKey.get(k);
     if (j) { j.st = r.status; j.n = !!r.notes.trim(); }
     if (current.k === k) { Object.assign(current, { status: r.status, notes: r.notes, applied: r.applied, hasNote: r.hasNote }); renderDetail(current); }
@@ -368,7 +368,7 @@ async function hide(hidden) {
   if (!current) return;
   const k = current.k;
   try {
-    await api("/api/hide", { k, hidden });
+    await api("api/hide", { k, hidden });
     const j = byKey.get(k);
     if (j) j.h = hidden;
     current.hidden = hidden;
@@ -414,7 +414,7 @@ $("#deep").addEventListener("change", () => { persist(); runSearch(); });
 for (const id of [...FILTERS, ...CHECKS.filter((c) => c !== "deep")]) $("#" + id).addEventListener("change", () => { persist(); apply(); });
 $("#prepare").addEventListener("click", async () => {
   try {
-    const r = await api("/api/prepare", {});
+    const r = await api("api/prepare", {});
     toast(r.prepared ? `${r.prepared} folder(s) ready, ${r.pending} still need a CV — run /apply in Claude Code` : "Nothing is marked “apply” yet");
   } catch (err) { toast("Failed: " + err.message); }
 });
@@ -423,7 +423,7 @@ let lastLoad = Date.now();
 window.addEventListener("focus", async () => {
   if (Date.now() - lastLoad < 15000) return;
   lastLoad = Date.now();
-  const data = await api("/api/jobs").catch(() => null);
+  const data = await api("api/jobs").catch(() => null);
   if (!data) return;
   const fresh = data.jobs.length !== jobs.length;
   jobs = data.jobs; meta = data.meta;

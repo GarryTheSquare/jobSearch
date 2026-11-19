@@ -369,6 +369,12 @@ of the job's own hours if it states 32 or more, else 40. Holiday pay is not
 added. A salary with no period is converted only when it can only be yearly
 (15 000 or more) — Hoofdkraan's "€50 - €350" is a task budget, not a wage.
 
+Each vacancy's `fit` rating (0–100, from `Profile/fit.json`; a `fit:` typed into
+its note wins) shows as a badge on the row and as the first fact in the detail
+pane. Sort by **Best fit** — unrated jobs sink to the bottom — and narrow with the
+**Fit** filter (30, 50, 60 or 70 and up). The ratings file is re-read when it
+changes, so newly rated jobs appear on the next reload.
+
 **Hide** (`h`) is for the ones you never want to see again. It is not a status
 and writes no note — that would rebuild the very pile this avoids — just the
 job's key in `JobVault/.browse/hidden.json`, a dot-folder Obsidian skips.

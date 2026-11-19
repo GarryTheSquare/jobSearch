@@ -55,6 +55,10 @@ aside .check { display: flex; margin: 4px 0; color: var(--ink); }
 .row .tags { grid-column: 1 / -1; display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
 .row.hid { opacity: .5; }
 .chip.pay { background: transparent; border: 1px solid var(--line); }
+.chip.fit { font-variant-numeric: tabular-nums; font-weight: 600; }
+.chip.fit-hi { background: var(--apply); color: #fff; }
+.chip.fit-mid { background: var(--interested); color: #fff; }
+.chip.fit-lo { border: 1px solid var(--line); background: transparent; color: var(--ink); }
 .chip { font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--chip); color: var(--muted); white-space: nowrap; }
 .st { font-size: 11px; padding: 1px 7px; border-radius: 99px; color: #fff; font-weight: 600; }
 .st-apply { background: var(--apply); } .st-interested { background: var(--interested); } .st-applied { background: var(--applied); }
@@ -101,6 +105,7 @@ aside .check { display: flex; margin: 4px 0; color: var(--ink); }
   <select id="sort" class="btn" aria-label="Sort">
     <option value="posted">Newest posted</option>
     <option value="found">Newest found</option>
+    <option value="fit">Best fit</option>
     <option value="company">Company A–Z</option>
   </select>
   <span id="count">Loading…</span>
@@ -124,6 +129,13 @@ aside .check { display: flex; margin: 4px 0; color: var(--ink); }
       <option value="">Any time</option><option value="1">Last day</option><option value="3">Last 3 days</option>
       <option value="7">Last week</option><option value="14">Last 2 weeks</option><option value="30">Last month</option>
     </select>
+
+    <h2>Fit</h2>
+    <select id="minfit">
+      <option value="">Any fit</option><option value="30">30 or more</option><option value="50">50 or more</option>
+      <option value="60">60 or more</option><option value="70">70 or more</option>
+    </select>
+    <div class="hint">A 0–100 rating of how well the job suits you, from <code>Profile/fit.json</code>.</div>
 
     <h2>Show</h2>
     <label class="check"><input id="salary" type="checkbox"> Salary stated</label>
@@ -162,7 +174,7 @@ const store = { get(k) { try { return JSON.parse(localStorage.getItem("jb:" + k)
 
 const LABEL = { new: "Unmarked", interested: "Interested", apply: "To apply", applied: "Applied", interview: "Interview", offer: "Offer", rejected: "Rejected", closed: "Delisted" };
 const MARK_BUTTONS = [["interested", "Interested", "i"], ["apply", "Apply", "a"], ["applied", "Applied", "d"], ["interview", "Interview", ""], ["offer", "Offer", ""], ["rejected", "Rejected", "r"]];
-const FILTERS = ["geo", "board", "age", "sort"];
+const FILTERS = ["geo", "board", "age", "minfit", "sort"];
 const CHECKS = ["remoteOnly", "salary", "closed", "hidden", "deep"];
 
 let meta = null, jobs = [], byKey = new Map(), view = [], shown = 0, selected = null, statusFilter = "", deepKeys = null, boards = new Map();
@@ -231,6 +243,7 @@ function apply(keepScroll = false) {
   const geo = $("#geo").value, board = $("#board").value, age = Number($("#age").value) || 0;
   const remoteOnly = $("#remoteOnly").checked, salary = $("#salary").checked, closed = $("#closed").checked, hidden = $("#hidden").checked;
   const since = age ? new Date(Date.now() - age * 86400000).toISOString().slice(0, 10) : "";
+  const minfit = Number($("#minfit").value) || 0;
   const marked = (j) => j.st !== "new" && j.st !== "closed";
   view = jobs.filter((j) => {
     // A mark always shows: filters narrow the unmarked thousands, never hide your own work
@@ -247,6 +260,7 @@ function apply(keepScroll = false) {
     if (remoteOnly && !j.r) return false;
     if (salary && !j.s) return false;
     if (since && !(j.p >= since)) return false;
+    if (minfit && !(j.fit >= minfit)) return false;
     if (q.length) {
       if (deepKeys) { if (!deepKeys.has(j.k)) return false; }
       else if (!q.every((w) => j.hay.includes(w))) return false;
@@ -256,6 +270,8 @@ function apply(keepScroll = false) {
   const sort = $("#sort").value;
   const cmp = sort === "company" ? (a, b) => a.c.localeCompare(b.c) || b.p.localeCompare(a.p)
     : sort === "found" ? (a, b) => b.f.localeCompare(a.f) || b.p.localeCompare(a.p)
+    // Unrated jobs sink to the bottom; ties go to the newest.
+    : sort === "fit" ? (a, b) => (b.fit ?? -1) - (a.fit ?? -1) || (b.p || b.f).localeCompare(a.p || a.f)
     : (a, b) => (b.p || b.f).localeCompare(a.p || a.f);
   view.sort(cmp);
   $("#count").textContent = `${view.length.toLocaleString()} of ${jobs.length.toLocaleString()} vacancies`;
@@ -269,8 +285,11 @@ function apply(keepScroll = false) {
   if (keepScroll) list.scrollTop = top; else list.scrollTop = 0;
 }
 
+const fitBand = (n) => (n >= 70 ? "fit-hi" : n >= 50 ? "fit-mid" : n >= 30 ? "fit-lo" : "");
+
 function rowFor(j) {
   const tags = [];
+  if (j.fit != null) tags.push(el("span", { class: "chip fit " + fitBand(j.fit), text: `fit ${j.fit}`, title: "How well this job suits you (0–100)" }));
   if (j.st !== "new") tags.push(el("span", { class: "st st-" + j.st, text: LABEL[j.st] || j.st }));
   if (j.h) tags.push(el("span", { class: "chip", text: "hidden" }));
   if (j.r) tags.push(el("span", { class: "chip", text: "remote" }));

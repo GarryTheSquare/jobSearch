@@ -30,7 +30,8 @@ import { spawn } from "node:child_process";
 import { loadConfig } from "./config.js";
 import { loadStore } from "./store.js";
 import { describeSources, labelFor } from "./sources/index.js";
-import { jobEntries, writeJobMark, writeToApply, findExisting, noteMode } from "./vault.js";
+import { jobEntries, writeJobMark, writeToApply, findExisting, noteMode, loadFit, FIT_FILE } from "./vault.js";
+import { PROFILE_DIR } from "./profile.js";
 import { salaryFigures } from "./salary.js";
 import { readJobNotes, prepareApplications, applicationDirName, KNOWN_STATUSES, DEFAULT_MARKS, APPLICATIONS_DIR } from "./apply.js";
 
@@ -76,7 +77,31 @@ const uniq = (arr) => [...new Set((arr || []).filter(Boolean))];
 function createState(cfg) {
   const hiddenFile = join(cfg.vaultPath, ".browse", "hidden.json");
   const geo = new Map(describeSources().map((s) => [s.id, s.geoFiltered ? "local" : "remote"]));
-  const state = { cfg, mtime: 0, store: null, entries: [], byKey: new Map(), marks: new Map(), hidden: {}, list: null, haystack: null };
+  const fitFile = join(cfg.vaultPath, PROFILE_DIR, FIT_FILE);
+  const state = { cfg, mtime: 0, store: null, entries: [], byKey: new Map(), marks: new Map(), hidden: {}, list: null, haystack: null, ratings: {}, fitMtime: -1 };
+
+  /* Fit ratings (0–100) from Profile/fit.json, re-read when the file changes —
+     rating a batch of new vacancies shows up on the next refresh of the page. */
+  state.loadFit = () => {
+    let mtime = 0;
+    try {
+      mtime = statSync(fitFile).mtimeMs;
+    } catch {}
+    if (mtime === state.fitMtime) return;
+    state.fitMtime = mtime;
+    state.ratings = mtime ? loadFit(cfg.vaultPath) : {};
+  };
+  /* A fit typed into the job's note wins, as it does when the vault is built. */
+  const fitNumber = (v) => (v === "" || v == null || !Number.isFinite(Number(v)) ? undefined : Math.round(Number(v)));
+  state.fitOf = (e) => {
+    const typed = state.marks.get(String(e.anchor.jobkey))?.fit;
+    if (typed !== undefined) return typed;
+    for (const key of [e.anchor.jobkey, ...e.members.map((m) => m.jobkey)]) {
+      const n = fitNumber(state.ratings[key]);
+      if (n !== undefined) return n;
+    }
+    return null;
+  };
 
   state.loadHidden = () => {
     try {
@@ -96,7 +121,7 @@ function createState(cfg) {
     state.marks = new Map();
     for (const n of readJobNotes(cfg.vaultPath)) {
       if (!n.fm.jobkey) continue;
-      state.marks.set(String(n.fm.jobkey), { status: n.fm.status || "new", notes: !!n.notes.trim() });
+      state.marks.set(String(n.fm.jobkey), { status: n.fm.status || "new", notes: !!n.notes.trim(), fit: fitNumber(n.fm.fit) });
     }
   };
 
@@ -149,9 +174,9 @@ function createState(cfg) {
         };
       });
     }
-    return state.list.map((row) => {
+    return state.list.map((row, i) => {
       const mark = state.marks.get(row.k);
-      return { ...row, st: mark?.status || (row.x ? "closed" : "new"), n: mark?.notes || false, h: !!state.hidden[row.k] };
+      return { ...row, st: mark?.status || (row.x ? "closed" : "new"), n: mark?.notes || false, h: !!state.hidden[row.k], fit: state.fitOf(state.entries[i]) };
     });
   };
 
@@ -197,7 +222,9 @@ function createState(cfg) {
       hidden: !!state.hidden[key],
       description,
       application: existsSync(join(cfg.vaultPath, APPLICATIONS_DIR, appDir)) ? `${APPLICATIONS_DIR}/${appDir}` : "",
+      fit: state.fitOf(e),
       facts: [
+        ["Fit", state.fitOf(e) == null ? "" : `${state.fitOf(e)} / 100`],
         ["Salary", paid?.salary],
         ["Yearly", pay ? `${pay.yearly} (${pay.yearlyBasis})` : ""],
         ["Hourly", pay ? `${pay.hourly} (${pay.hourlyBasis})` : ""],
@@ -223,6 +250,7 @@ function createState(cfg) {
 
   state.loadHidden();
   state.loadMarks();
+  state.loadFit();
   state.refresh();
   return state;
 }
@@ -277,6 +305,7 @@ function handler(state, port) {
           state.refresh();
           state.loadMarks();
           state.loadHidden();
+          state.loadFit();
           const lastRun = state.store.runs.at(-1);
           return send(req, res, 200, {
             meta: {

@@ -300,7 +300,8 @@ generated part of a note. It preserves:
 
 `fit` ratings are stored in `Profile/fit.json` (`{ "<jobkey>": 0–100 }`), which is
 never regenerated, so a vacancy keeps its rating even while it has no note. Every note
-the scraper writes takes its `fit:` from there unless the note already carries one.
+the scraper writes takes its `fit:` from there unless the note already carries one,
+and shows it again as the first row of the note's facts table (**Fit** · `72 / 100`).
 Setting `fit` does not count as touching a note: it neither keeps a note from being
 pruned nor makes one appear in "marked" mode.
 

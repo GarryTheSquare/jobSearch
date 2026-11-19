@@ -255,6 +255,9 @@ function jobNote(entry, existing, ratings) {
   ];
 
   const facts = [
+    // How well the vacancy suits you, from Profile/fit.json or the note's own
+    // `fit:` — the same number as the property, where it can be read at a glance.
+    ["Fit", fit === undefined ? "—" : `${fit} / 100`],
     ["Company", `[[${safeName(job.company)}]]`],
     ["Location", job.location || "—"],
     ["Salary", members.map((m) => m.salary).find(Boolean) || "—"],
